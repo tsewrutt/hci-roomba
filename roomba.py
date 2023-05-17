@@ -51,6 +51,7 @@ class Roomba(object):
 		self.make_songs()
 	
 	def make_songs(self):
+		#array takes the sound frequency 
 		i = [72, 32, 71, 16, 69, 16, 74, 32, 72, 16, 71, 32, 71, 16, 69, 16, 67, 16, 71, 16, 71, 32]
 		self.create.song(Songs.NEUTRAL, i)
 
@@ -321,7 +322,7 @@ class Roomba(object):
 				s_duration = self.create.play_song(Songs.ANXIOUS)
 				time.sleep(s_duration)
 
-				print("Changing directions.")
+				print("Changing directions.") #when changing the directions the vel is constant which means roomba hits the wall with full speed, we may have to decrease the speed on that when sensor detects about to collide to wall
 				movement = self.directions[Directions.BACK] * vel
 				self.create.drive_direct(int(movement[0]), int(movement[1]))
 				time.sleep(0.4)
