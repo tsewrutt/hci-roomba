@@ -1,12 +1,13 @@
 from enum import Enum, IntEnum
 from pycreate600 import Create
-
+from firebase_admin import db
 import numpy as np
 
 import random
 import requests
 import sys
 import time
+
 
 
 class ButtonState(Enum):
@@ -39,8 +40,8 @@ class Roomba(object):
 		"""
 
 		# login credentials
-		self.username = "coneill"
-		self.password = "password"
+		self.username = "admin"
+		self.password = "admin"
 
 		self.directions = [np.array([1, 1]), np.array([-1, -1]), np.array([0, 1]), np.array([1, 0])]
 		self.power_button = ButtonState.RELEASED
@@ -75,62 +76,75 @@ class Roomba(object):
 	
 	def has_task(self):
 		try:
-			login_url = "https://robotportal.herokuapp.com/api/auth/login"
-			info_url = "https://robotportal.herokuapp.com/api/users/info"
-			tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
-
+			log = "http://localhost:5000"
 			credentials = {
-				"username": self.username,
-				"password": self.password
+				"username" : self.username,
+				"password" : self.password
 			}
 
-			auth_res = requests.post(login_url, json=credentials).json()
-			token = "Bearer " + auth_res["token"]
-
-			info_res = requests.get(info_url, headers={"Authorization": token}).json()
-			uid = info_res["id"]
-
-			tasks = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
-			if any(i["complete"] == False and i["skipped"] == False for i in tasks):
-				return True
-
-			if tasks[len(tasks)-1]["skipped"] == True:
-				return True
-			return False
 		except Exception:
 			return False
+	
+	#completed, failed , pending, incomplete
 
-	def post_task(self):
-		try:
-			login_url = "https://robotportal.herokuapp.com/api/auth/login"
-			info_url = "https://robotportal.herokuapp.com/api/users/info"
-			tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
+	# def has_task(self):
+		# try:
+		# 	login_url = "https://robotportal.herokuapp.com/api/auth/login"
+		# 	info_url = "https://robotportal.herokuapp.com/api/users/info"
+		# 	tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
+		
+		# 	credentials = {
+		# 		"username": self.username,
+		# 		"password": self.password
+		# 	}
+		
+		# 	auth_res = requests.post(login_url, json=credentials).json()
+		# 	token = "Bearer " + auth_res["token"]
+		
+		# 	info_res = requests.get(info_url, headers={"Authorization": token}).json()
+		# 	uid = info_res["id"]
+		
+		# 	tasks = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
+		# 	if any(i["complete"] == False and i["skipped"] == False for i in tasks):
+		# 		return True
+		
+		# 	if tasks[len(tasks)-1]["skipped"] == True:
+		# 		return True
+		# 	return False
+		# except Exception:
+		# 	return False
 
-			credentials = {
-				"username": self.username,
-				"password": self.password
-			}
+	# def post_task(self):
+	# 	try:
+	# 		login_url = "https://robotportal.herokuapp.com/api/auth/login"
+	# 		info_url = "https://robotportal.herokuapp.com/api/users/info"
+	# 		tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
 
-			auth_res = requests.post(login_url, json=credentials).json()
-			token = "Bearer " + auth_res["token"]
+	# 		credentials = {
+	# 			"username": self.username,
+	# 			"password": self.password
+	# 		}
 
-			info_res = requests.get(info_url, headers={"Authorization": token}).json()
-			uid = info_res["id"]
+	# 		auth_res = requests.post(login_url, json=credentials).json()
+	# 		token = "Bearer " + auth_res["token"]
 
-			tasks_res = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
-			tid = len(tasks_res) + 1
+	# 		info_res = requests.get(info_url, headers={"Authorization": token}).json()
+	# 		uid = info_res["id"]
 
-			if tid >= 3:
-				return
+	# 		tasks_res = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
+	# 		tid = len(tasks_res) + 1
+
+	# 		if tid >= 3:
+	# 			return
 			
-			user_task = {
-				"userId": uid,
-				"taskId": tid
-			}
-			requests.post(tasks_url.format(uid = uid), json=user_task, headers={"Authorization": token}).json()
-			return True
-		except Exception:
-			return False
+	# 		user_task = {
+	# 			"userId": uid,
+	# 			"taskId": tid
+	# 		}
+	# 		requests.post(tasks_url.format(uid = uid), json=user_task, headers={"Authorization": token}).json()
+	# 		return True
+	# 	except Exception:
+	# 		return False
 	
 	def clean(self, vel: int = 250, duration: int = 1):
 		"""

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Welcome To Roomba Portal</title>
+
+    <!-- update the version number as needed -->
+    <!-- <script defer src="/__/firebase/9.22.0/firebase-app-compat.js"></script> -->
+    <!-- include only the Firebase features as you need -->
+    <!-- <script defer src="/__/firebase/9.22.0/firebase-firestore-compat.js"></script> -->
+    <script src="https://www.gstatic.com/firebasejs/5.0.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/5.0.3/firebase-firestore.js"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/5.0.3/firebase-storage-compat.js"></script> -->
+
+    <script>
+      // Initialize Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyDMl6mFALQU0b3KyOn6rAA3iT1vyi9r6EY",
+        authDomain: "hri-roomba-data.firebaseapp.com",
+        databaseURL: "https://hri-roomba-data-default-rtdb.firebaseio.com",
+        projectId: "hri-roomba-data",
+        storageBucket: "hri-roomba-data.appspot.com",
+        messagingSenderId: "761382477216",
+        appId: "1:761382477216:web:5f3497912c8add63a158c5",
+        measurementId: "G-M5HZY6L9ER"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      db.settings({ timestampsInSnapshots: true }); 
+  </script>
+
+  </head>
+  <body>
+    <div id="app">
+      <div v-if="!checkUser" class="form-group text-center">
+        <h2>Welcome To Roomba Portal</h2>
+        <p>Sign in!</p>
+        <input class="col-4 mx-auto form-control" type="text" name="username" v-model="input.username" placeholder="Username" />
+        <input class="col-4 mx-auto form-control" type="password" name="password" v-model="input.password" placeholder="Password" />
+        <button class="col-4 btn btn-outline-success" type="button" v-on:click="login()">Login</button>
+      </div>
+      <div v-else class="text-center">
+        <button type="button" class="btn btn-outline-danger" v-on:click="logout()">Logout</button>
+        <button type="button" class="btn btn-outline-primary" v-on:click="alltasks()">Tasks</button>
+      </div>
+
+      <div v-if="checkUser">
+        <div v-if="view === 'tasks' " id="taskList">
+          <ul class="list-group">
+            <p>Incomplete Task</p>
+            <div v-for="task in getIncompleteTasks">
+              <li class="list-group-item col-7 mx-auto" id="eachTask">
+                <div  class="d-flex w-100 justify-content-between">
+                  {{task.id}} {{task.status}}
+                </div>
+              </li>
+            </div>
+          </ul>
+          <ul class="list-group">
+            <p>Pending Task</p>
+            <div v-for="task in getPendingTasks">
+              <li class="list-group-item col-7 mx-auto" id="eachTask">
+                <div  class="d-flex w-100 justify-content-between">
+                  {{task.id}} {{task.status}}
+                </div>
+              </li>
+            </div>
+          </ul>
+          <ul class="list-group">
+            <p>Completed Task</p>
+            <div v-for="task in getCompletedTasks">
+              <li class="list-group-item col-7 mx-auto" id="eachTask">
+                <div  class="d-flex w-100 justify-content-between">
+                  {{task.id}} {{task.status}}
+                </div>
+              </li>
+            </div>
+          </ul>
+          <ul class="list-group">
+            <p>Failed Task</p>
+            <div v-for="task in getFailedTasks">
+              <li class="list-group-item col-7 mx-auto" id="eachTask">
+                <div  class="d-flex w-100 justify-content-between">
+                  {{task.id}} {{task.status}}
+                </div>
+              </li>
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      </div>
+     
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="index.js" ></script>
+  </body>
+</html>
