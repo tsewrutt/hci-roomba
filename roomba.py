@@ -1,4 +1,5 @@
 from enum import Enum, IntEnum
+import time
 from pycreate600 import Create
 from firebase_admin import db
 import numpy as np
@@ -6,8 +7,9 @@ import numpy as np
 import random
 import requests
 import sys
-import time
-
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 
 class ButtonState(Enum):
@@ -33,15 +35,30 @@ class Roomba(object):
 	"""
 	Class that represents the Roomba.
 	"""
+	global usersDoc_ref
+	global movesDoc_ref
+	global tasksDoc_ref
+	global tasksCounter
+
+	# Use google login
+	cred = credentials.Certificate('hri-roomba-data-83bcb0b681a0.json')
+	app = firebase_admin.initialize_app(cred)
+	db = firestore.client()
+	tasksDoc_ref = db.collection('tasks').stream()
+	# controlsDirection_ref = db.collection('movements').document('direction')
+	# isremoteControlled = controlsDirection_ref.get().to_dict()["IsRemoteControlled"]
+	usersDoc_ref = db.collection('users').stream()
+
 
 	def __init__(self, port):
 		"""
 		Constructor.
 		"""
+		docDirection_ref = db.collection('movements').document('direction')
+		docDirection_ref.on_snapshot(on_snapshot)
+		self.direction_data = docDirection_ref
+		
 
-		# login credentials
-		self.username = "admin"
-		self.password = "admin"
 
 		self.directions = [np.array([1, 1]), np.array([-1, -1]), np.array([0, 1]), np.array([1, 0])]
 		self.power_button = ButtonState.RELEASED
@@ -74,45 +91,25 @@ class Roomba(object):
 		else:
 			self.power_button = ButtonState.RELEASED
 	
+	#This func will be called in the main loop until all task is completed
 	def has_task(self):
 		try:
-			log = "http://localhost:5000"
-			credentials = {
-				"username" : self.username,
-				"password" : self.password
-			}
+			tasksCounter = 0
+			for doc in tasksDoc_ref:
+				if(doc.to_dict()["status"] == "incomplete"):
+					tasksCounter = tasksCounter + 1
 
+			if(tasksCounter > 0):
+				return True
+			else:
+				return False
+	
 		except Exception:
 			return False
+		
+
 	
 	#completed, failed , pending, incomplete
-
-	# def has_task(self):
-		# try:
-		# 	login_url = "https://robotportal.herokuapp.com/api/auth/login"
-		# 	info_url = "https://robotportal.herokuapp.com/api/users/info"
-		# 	tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
-		
-		# 	credentials = {
-		# 		"username": self.username,
-		# 		"password": self.password
-		# 	}
-		
-		# 	auth_res = requests.post(login_url, json=credentials).json()
-		# 	token = "Bearer " + auth_res["token"]
-		
-		# 	info_res = requests.get(info_url, headers={"Authorization": token}).json()
-		# 	uid = info_res["id"]
-		
-		# 	tasks = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
-		# 	if any(i["complete"] == False and i["skipped"] == False for i in tasks):
-		# 		return True
-		
-		# 	if tasks[len(tasks)-1]["skipped"] == True:
-		# 		return True
-		# 	return False
-		# except Exception:
-		# 	return False
 
 	# def post_task(self):
 	# 	try:
@@ -363,6 +360,42 @@ class Roomba(object):
 
 		print("Done neurotic cleaning.")
 		return time.monotonic() >= timeout
+	
+	def remoteMovement(self, vel: int = 150):
+		# docDirection_ref.on_snapshot(on_snapshot)
+		# self.direction_data = docDirection_ref
+		self.create.leds(6, 127, 255)
+
+		s_duration = self.create.play_song(Songs.NEUTRAL)
+		time.sleep(s_duration)
+		# lets user know it is remote
+		direction = self.direction_data.get().to_dict()["direction"]
+		
+
+		self.create.motors(13)
+
+		if direction == 0:
+			movement = self.directions[Directions.FORWARD] * vel
+		elif direction == 1:
+			movement = self.directions[Directions.BACK] * vel
+		elif direction == 2:
+			movement = self.directions[Directions.LEFT] * vel
+		elif direction == 1:
+			movement = self.directions[Directions.RIGHT] * vel
+		
+		self.create.drive_direct(int(movement[0]), int(movement[1]))
+
+
+		# roomba.create.motors_stop()
+		# roomba.create.drive_stop()
+
+		return
+	
+	#recursive func for real-time updates
+def on_snapshot(doc_snap,changes,readtime):
+	return
+
+
 
 
 if __name__ == "__main__":
@@ -371,16 +404,41 @@ if __name__ == "__main__":
 	roomba = Roomba(port)
 
 	try:
+		dirDoc = roomba.direction_data.get().to_dict()
+		isremoteControlled =dirDoc["IsRemoteControlled"]
+
 		while True:
 			roomba.update_power_button()
 			if roomba.power_button == ButtonState.JUST_PRESSED:
+				# if roomba.has_task():
+				# 	if(isremoteControlled):
+				# 		# let control by user
+				# 	else:
+				# 		# let normal clean cycle
+
+				# 		roomba.clean_neurotic(duration=5)
+				# else:
+				# 	if roomba.clean(duration=3):
+				# 		while roomba.post_task() == False:
+				# 			time.sleep(1)
+				# 		roomba.clean_neurotic(duration=2)
 				if roomba.has_task():
-					roomba.clean_neurotic(duration=5)
+					# may have to check what task so we can decide on neurotic or non neurotic cleaning
+					if isremoteControlled:
+						# roomba.create.motors_stop()
+						# roomba.create.drive_stop()
+						# let control
+						roomba.remoteMovement()
+					else:
+						roomba.create.motors_stop()
+						roomba.create.drive_stop()
+						# problem here, everytime switches to this one, it re runs the task
+						# roomba.clean(duration=3)
+						# normal clean
 				else:
-					if roomba.clean(duration=3):
-						while roomba.post_task() == False:
-							time.sleep(1)
-						roomba.clean_neurotic(duration=2)
+					print("Tasks Completed")
+
+
 			time.sleep(0.01)
 	except KeyboardInterrupt:
 		print("Exiting...")
