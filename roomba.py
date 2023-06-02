@@ -426,12 +426,13 @@ if __name__ == "__main__":
 					# may have to check what task so we can decide on neurotic or non neurotic cleaning
 					if isremoteControlled:
 						# roomba.create.motors_stop()
-						# roomba.create.drive_stop()
+						# roomba.create.drive_stop() 
 						# let control
 						roomba.remoteMovement()
 					else:
-						roomba.create.motors_stop()
-						roomba.create.drive_stop()
+						print("Stop")
+						# roomba.create.motors_stop()
+						# roomba.create.drive_stop()
 						# problem here, everytime switches to this one, it re runs the task
 						# roomba.clean(duration=3)
 						# normal clean
