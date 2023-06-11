@@ -154,6 +154,7 @@ cython_debug/
 
 # database secret key
 hri-roomba-data-83bcb0b681a0.json
+hri-roomba-data-f99a14d0631b.json
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
