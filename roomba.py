@@ -28,7 +28,8 @@ class Directions(IntEnum):
 class Songs(IntEnum):
 	NEUTRAL = 0,
 	NEUROTIC = 1,
-	ANXIOUS = 2
+	ANXIOUS = 2,
+	ROGUE = 3
 
 
 class Roomba(object):
@@ -54,6 +55,7 @@ class Roomba(object):
 		"""
 		Constructor.
 		"""
+		db = firestore.client()
 		docDirection_ref = db.collection('movements').document('direction')
 		docDirection_ref.on_snapshot(on_snapshot)
 		self.direction_data = docDirection_ref
@@ -78,6 +80,9 @@ class Roomba(object):
 
 		k = [77, 16, 77, 16, 77, 16]
 		self.create.song(Songs.ANXIOUS, k)
+
+		l = [77,20,50,40,20,30,40,50,77]
+		self.create.song(Songs.ROGUE, l)
 
 	def update_power_button(self):
 		"""
@@ -108,41 +113,13 @@ class Roomba(object):
 			return False
 		
 
-	
+	def dock(self):
+		"""
+		Call onto the seek_dock() function which directs Roomba to drive onto the dock
+		the next time it encounters the docking beams
+		"""
+		self.create.seek_dock()
 	#completed, failed , pending, incomplete
-
-	# def post_task(self):
-	# 	try:
-	# 		login_url = "https://robotportal.herokuapp.com/api/auth/login"
-	# 		info_url = "https://robotportal.herokuapp.com/api/users/info"
-	# 		tasks_url = "https://robotportal.herokuapp.com/api/users/{uid}/tasks"
-
-	# 		credentials = {
-	# 			"username": self.username,
-	# 			"password": self.password
-	# 		}
-
-	# 		auth_res = requests.post(login_url, json=credentials).json()
-	# 		token = "Bearer " + auth_res["token"]
-
-	# 		info_res = requests.get(info_url, headers={"Authorization": token}).json()
-	# 		uid = info_res["id"]
-
-	# 		tasks_res = requests.get(tasks_url.format(uid = uid), headers={"Authorization": token}).json()
-	# 		tid = len(tasks_res) + 1
-
-	# 		if tid >= 3:
-	# 			return
-			
-	# 		user_task = {
-	# 			"userId": uid,
-	# 			"taskId": tid
-	# 		}
-	# 		requests.post(tasks_url.format(uid = uid), json=user_task, headers={"Authorization": token}).json()
-	# 		return True
-	# 	except Exception:
-	# 		return False
-	
 	def clean(self, vel: int = 250, duration: int = 1):
 		"""
 		Start a neutral cleaning cycle.
@@ -171,7 +148,8 @@ class Roomba(object):
 		time.sleep(s_duration)
 
 		self.create.motors(13)
-
+		
+		#we can add the stop check here, but look at read write stats first before doing that
 		while is_cleaning:
 			is_colliding = False
 			collision = None
@@ -228,7 +206,8 @@ class Roomba(object):
 					movement = self.directions[Directions.LEFT] * (vel / 2)
 					turn_timeout = turn_time
 
-		self.create.motors_stop()
+		#we dont stop motors when done cleaning now, that'll be when we call stop
+		#self.create.motors_stop()
 		self.create.drive_stop()
 
 		s_duration = self.create.play_song(Songs.NEUTRAL)
@@ -352,7 +331,7 @@ class Roomba(object):
 					movement = self.directions[Directions.LEFT] * vel
 					turn_timeout = turn_time
 
-		self.create.motors_stop()
+		#self.create.motors_stop()
 		self.create.drive_stop()
 
 		s_duration = self.create.play_song(Songs.NEUROTIC)
@@ -361,34 +340,95 @@ class Roomba(object):
 		print("Done neurotic cleaning.")
 		return time.monotonic() >= timeout
 	
-	def remoteMovement(self, vel: int = 150):
-		# docDirection_ref.on_snapshot(on_snapshot)
-		# self.direction_data = docDirection_ref
-		self.create.leds(6, 127, 255)
+	def playAnxious(self):
+		s_duration = self.create.play_song(Songs.ANXIOUS)
+		time.sleep(s_duration)
 
+	def playHappy(self):
 		s_duration = self.create.play_song(Songs.NEUTRAL)
 		time.sleep(s_duration)
-		# lets user know it is remote
-		direction = self.direction_data.get().to_dict()["direction"]
-		
 
+
+	def updateSound(self):
+		self.direction_data.update({'sound':""})
+
+	def clearTask(self):
+		self.direction_data.update({'task':'0'})
+
+	def remoteMovement(self, vel: int = 200):
+		self.create.leds(6, 127, 255)
+		s_duration = self.create.play_song(Songs.NEUROTIC)
+		time.sleep(s_duration)
+
+        # docDirection_ref.on_snapshot(on_snapshot)
+        # self.direction_data = docDirection_ref
+        # lets user know it is remote
+		# isRemote = self.direction_data.get().to_dict()["IsRemoteControlled"]
+		# direction = self.direction_data.get().to_dict()["direction"]
+		# stop = self.direction_data.get().to_dict()["stop"]
+		# sound = self.direction_data.get().to_dict()["sound"]
+		# task = self.direction_data.get().to_dict()["task"]
+
+		#Have preset data
+		isRemote = True
+		direction = 1
+		stop = False
+		sound = ""
+		task = 0
+		
 		self.create.motors(13)
+    # starts off with forward
+		print(self.direction_data.get().to_dict())
+		movement = self.directions[Directions.FORWARD] * vel
+		while isRemote:
+			isRemote = self.direction_data.get().to_dict()["IsRemoteControlled"]
+			stop = self.direction_data.get().to_dict()["stop"]
+			sound = self.direction_data.get().to_dict()["sound"]
+			if not stop:
+				direction = self.direction_data.get().to_dict()["direction"]
+				task = self.direction_data.get().to_dict()["task"]
+				# drive direct moves roomba, if this is not present the roomba stay still
+				self.create.drive_direct(int(movement[0]), int(movement[1]))
+				time.sleep(0.001)
+				if direction == 0:
+					movement = self.directions[Directions.FORWARD] * vel
+					print("Forward")
+				elif direction == 1:
+					movement = self.directions[Directions.BACK] * vel
+					print("back")
+				elif direction == 2: #direction left right is reversed for control
+					movement = self.directions[Directions.RIGHT] * vel
+					print("right")
+				elif direction == 3:
+					print("left")
+					movement = self.directions[Directions.LEFT] * vel
+				
+				if task == 1:
+					self.clean(duration = 1)
+					self.clearTask()
+				elif task == 2:
+					self.clean(duration = 1)
+					self.clearTask()
+				elif task == 3:
+					self.clean_neurotic(duration = 1)
+					self.clearTask()
+			else:
+				# this could be roomba.drive...
+				print("stop is true, so stop drive")
+				self.create.drive_stop()
+				
+			if sound == 'anxious':
+				self.playAnxious()
+				self.updateSound()
+			elif sound == 'happy':
+				self.playHappy()
+				self.updateSound()
+				print("Happy")
+			#update sound to empty
 
-		if direction == 0:
-			movement = self.directions[Directions.FORWARD] * vel
-		elif direction == 1:
-			movement = self.directions[Directions.BACK] * vel
-		elif direction == 2:
-			movement = self.directions[Directions.LEFT] * vel
-		elif direction == 1:
-			movement = self.directions[Directions.RIGHT] * vel
-		
-		self.create.drive_direct(int(movement[0]), int(movement[1]))
-
-
-		# roomba.create.motors_stop()
-		# roomba.create.drive_stop()
-
+		s_duration = self.create.play_song(Songs.NEUROTIC)
+		time.sleep(s_duration)
+		self.create.motors_stop()
 		return
 	
 	#recursive func for real-time updates
@@ -410,27 +450,17 @@ if __name__ == "__main__":
 		while True:
 			roomba.update_power_button()
 			if roomba.power_button == ButtonState.JUST_PRESSED:
-				# if roomba.has_task():
-				# 	if(isremoteControlled):
-				# 		# let control by user
-				# 	else:
-				# 		# let normal clean cycle
 
-				# 		roomba.clean_neurotic(duration=5)
-				# else:
-				# 	if roomba.clean(duration=3):
-				# 		while roomba.post_task() == False:
-				# 			time.sleep(1)
-				# 		roomba.clean_neurotic(duration=2)
 				if roomba.has_task():
 					# may have to check what task so we can decide on neurotic or non neurotic cleaning
 					if isremoteControlled:
 						# roomba.create.motors_stop()
-						# roomba.create.drive_stop() 
+						# roomba.create.drive_stop()
 						# let control
+						print("remote movement")
 						roomba.remoteMovement()
 					else:
-						print("Stop")
+						print("stop")
 						# roomba.create.motors_stop()
 						# roomba.create.drive_stop()
 						# problem here, everytime switches to this one, it re runs the task

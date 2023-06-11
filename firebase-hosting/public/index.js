@@ -72,18 +72,6 @@ var app = new Vue({
         this.loggedIn = null;
         this.view = null;
       },
-      //   logout() {
-      //     //alert("No magic on the server yet. You'll have to write the logout code there.");
-      //     axios
-      //     .delete(this.serviceURL+"/logout")
-      //     .then(response => {
-      //         this.currentUserId = null;
-      //         location.reload();
-      //     })
-      //     .catch(e => {
-      //       console.log(e);
-      //     });
-      //   },
 
       alltasks() {
         console.log("tasks requested");
@@ -97,27 +85,45 @@ var app = new Vue({
         }); 
       },
 
+      // taskProgressSetter(time, expectedtime){
+      //   this.currTime = time;
+      //   this.timerequired = expectedtime;
+      //   return getProgressPercentage();
+      // }
+
     },
 
     computed: {
       // a computed getter
       getCompletedTasks: function () {
         // `this` points to the vm instance
-        
         return this.tasks.filter(task => task.status == "completed")
       },
 
       getIncompleteTasks: function () {
         // `this` points to the vm instance
-        
         return this.tasks.filter(task => task.status == "incomplete")
       },
 
       getPendingTasks: function () {
-        // `this` points to the vm instance
-        
+
         return this.tasks.filter(task => task.status == "pending")
-      },
+                .map(task => {
+                //var currTime = new Date()
+                // //var startTime = task.starttime.toDate()
+                // //duration in seconds
+
+                duration = (new Date() - task.starttime.toDate())/ 1000
+                // //added a new attribute to task in the json dict called progress
+                var newTask = task
+                const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
+
+                newTask.progress = clamp((duration/task.timerequiredfortask) * 100,0,100)                
+                
+                return newTask
+
+                });
+        },
 
       getFailedTasks: function () {
         // `this` points to the vm instance
@@ -125,7 +131,35 @@ var app = new Vue({
         return this.tasks.filter(task => task.status == "failed")
       },
 
+      // taskProgressPercentage: function(task){
+      //     return (task.timetaken / task.timerequiredfortask) * 100;
+      // },
+
     },
+
+    beforeDestroy() {
+      // prevent memory leak
+      clearInterval(this.interval)
+    },
+    created() {
+      // update the time every second
+      this.interval = setInterval(() => {
+        this.tasks = this.tasks.map(task => { if(task.status == "pending"){
+          duration = (new Date() - task.starttime.toDate())/ 1000
+                // //added a new attribute to task in the json dict called progress
+                var newTask = task
+                const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
+
+                newTask.progress = clamp((duration/task.timerequiredfortask) * 100,0,100)                
+                
+                return newTask
+        }else{
+          return task
+        }
+      })
+      }, 1000)
+    }
+
   //------- END methods --------
   
 });
